@@ -1,0 +1,29 @@
+# === Node / React Ignore List ===
+
+# dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# build output
+dist/
+build/
+
+# environment variables
+.env
+.env.local
+.env.production
+.env.development
+
+# system files
+.DS_Store
+Thumbs.db
+
+# local editor / IDE configs
+.vscode/
+.idea/
+
+# logs
+logs/
+*.log

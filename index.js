@@ -5,6 +5,7 @@ const app = express();
 // todo Required files (API Routes)
 const userRoutes = require("./routes/users.routes");
 const scholarshipRoutes = require("./routes/scholarships.routes");
+const applicationRoutes = require("./routes/applications.routes");
 
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
@@ -18,6 +19,7 @@ app.use(cors());
 // ** All routes
 app.use("/users", userRoutes);
 app.use("/scholarships", scholarshipRoutes);
+app.use("/applications", applicationRoutes);
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.9busnhf.mongodb.net/?appName=Cluster0`;
 

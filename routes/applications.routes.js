@@ -99,4 +99,58 @@ router.get("/scholarship/:id", verifyJWT, verifyAdmin, async (req, res) => {
   res.json(list);
 });
 
+// =============================
+// GET — Pending applications (Moderator)
+// =============================
+router.get("/pending", verifyJWT, verifyModerator, async (req, res) => {
+  const pending = await applicationsCollection
+    .find({ status: "pending" })
+    .toArray();
+
+  res.json(pending);
+});
+
+
+// =============================
+// PATCH — Approve Application (Moderator)
+// =============================
+router.patch("/approve/:id", verifyJWT, verifyModerator, async (req, res) => {
+  const id = req.params.id;
+
+  const filter = { _id: new ObjectId(id) };
+
+  const update = {
+    $set: { status: "approved", reviewedAt: new Date() },
+  };
+
+  const result = await applicationsCollection.updateOne(filter, update);
+
+  res.json({
+    success: true,
+    message: "Application approved",
+    result,
+  });
+});
+
+// =============================
+// PATCH — Reject Application (Moderator)
+// =============================
+router.patch("/reject/:id", verifyJWT, verifyModerator, async (req, res) => {
+  const id = req.params.id;
+  const filter = { _id: new ObjectId(id) };
+
+  const update = {
+    $set: { status: "rejected", reviewedAt: new Date() },
+  };
+
+  const result = await applicationsCollection.updateOne(filter, update);
+
+  res.json({
+    success: true,
+    message: "Application rejected",
+    result,
+  });
+});
+
+
 module.exports = router;

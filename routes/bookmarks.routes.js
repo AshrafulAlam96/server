@@ -1,32 +1,40 @@
+// server/routes/bookmarks.routes.js
 const express = require("express");
 const router = express.Router();
-const client = require("../db/client");
-const { ObjectId } = require("mongodb");
-
+const { getCollections } = require("../config/db");
 const verifyJWT = require("../middleware/verifyJWT");
 
-const bookmarksCollection = client.db("scholarstream").collection("bookmarks");
-
-// Add bookmark (student)
+/**
+ * POST /bookmarks
+ * Body: { scholarshipId }
+ */
 router.post("/", verifyJWT, async (req, res) => {
   try {
+    const { bookmarksCollection } = await getCollections();
     const { scholarshipId } = req.body;
     const email = req.decoded.email;
 
     const existing = await bookmarksCollection.findOne({ scholarshipId, email });
     if (existing) return res.json({ added: false, message: "Already bookmarked" });
 
-    const doc = { scholarshipId, email, createdAt: new Date() };
-    const result = await bookmarksCollection.insertOne(doc);
+    const result = await bookmarksCollection.insertOne({
+      scholarshipId,
+      email,
+      createdAt: new Date(),
+    });
+
     res.json({ added: true, result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Remove bookmark
+/**
+ * DELETE /bookmarks/:scholarshipId
+ */
 router.delete("/:scholarshipId", verifyJWT, async (req, res) => {
   try {
+    const { bookmarksCollection } = await getCollections();
     const scholarshipId = req.params.scholarshipId;
     const email = req.decoded.email;
 
@@ -37,12 +45,15 @@ router.delete("/:scholarshipId", verifyJWT, async (req, res) => {
   }
 });
 
-// List my bookmarks
+/**
+ * GET /bookmarks/my
+ */
 router.get("/my", verifyJWT, async (req, res) => {
   try {
+    const { bookmarksCollection } = await getCollections();
     const email = req.decoded.email;
-    const items = await bookmarksCollection.find({ email }).toArray();
-    res.json(items);
+    const data = await bookmarksCollection.find({ email }).toArray();
+    res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

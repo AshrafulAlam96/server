@@ -1,51 +1,47 @@
+// server/routes/admin.routes.js
 const express = require("express");
 const router = express.Router();
-const client = require("../db/client");
-const { verifyAdmin } = require("../middleware/verifyRole");
+const { getCollections } = require("../config/db");
 const verifyJWT = require("../middleware/verifyJWT");
+const { verifyAdmin } = require("../middleware/verifyRole");
+const { ObjectId } = require("mongodb");
 
-const users = client.db("scholarstream").collection("users");
-const scholarships = client.db("scholarstream").collection("scholarships");
-const applications = client.db("scholarstream").collection("applications");
-const reviews = client.db("scholarstream").collection("reviews");
-
-// =============================
-// GET — Admin Dashboard Statistics
-// =============================
+/**
+ * Admin Dashboard Stats
+ */
 router.get("/stats", verifyJWT, verifyAdmin, async (req, res) => {
   try {
-    const totalUsers = await users.countDocuments();
-    const totalScholarships = await scholarships.countDocuments();
-    const totalApplications = await applications.countDocuments();
-    const totalReviews = await reviews.countDocuments();
+    const {
+      usersCollection,
+      scholarshipsCollection,
+      applicationsCollection,
+      reviewsCollection,
+      paymentsCollection,
+    } = await getCollections();
 
-    // Role counts
+    const totalUsers = await usersCollection.countDocuments();
+    const totalScholarships = await scholarshipsCollection.countDocuments();
+    const totalApplications = await applicationsCollection.countDocuments();
+    const totalReviews = await reviewsCollection.countDocuments();
+
     const roleCounts = {
-      admin: await users.countDocuments({ role: "admin" }),
-      moderator: await users.countDocuments({ role: "moderator" }),
-      student: await users.countDocuments({ role: "student" }),
+      admins: await usersCollection.countDocuments({ role: "admin" }),
+      moderators: await usersCollection.countDocuments({ role: "moderator" }),
+      students: await usersCollection.countDocuments({ role: "student" }),
     };
 
-    // Applications status
     const applicationStatus = {
-      pending: await applications.countDocuments({ status: "pending" }),
-      approved: await applications.countDocuments({ status: "approved" }),
-      rejected: await applications.countDocuments({ status: "rejected" }),
+      pending: await applicationsCollection.countDocuments({ status: "pending" }),
+      approved: await applicationsCollection.countDocuments({ status: "approved" }),
+      rejected: await applicationsCollection.countDocuments({ status: "rejected" }),
     };
 
-    // Category stats
-    const categories = await scholarships
-      .aggregate([
-        { $group: { _id: "$category", count: { $sum: 1 } } },
-      ])
-      .toArray();
+    const payments = await paymentsCollection.aggregate([
+      { $match: { status: "succeeded" } },
+      { $group: { _id: null, revenue: { $sum: "$amount" } } },
+    ]).toArray();
 
-    // Country stats (optional)
-    const countries = await scholarships
-      .aggregate([
-        { $group: { _id: "$country", count: { $sum: 1 } } },
-      ])
-      .toArray();
+    const totalRevenue = payments[0]?.revenue || 0;
 
     res.json({
       totalUsers,
@@ -54,9 +50,38 @@ router.get("/stats", verifyJWT, verifyAdmin, async (req, res) => {
       totalReviews,
       roleCounts,
       applicationStatus,
-      categories,
-      countries,
+      totalRevenue,
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Admin — Delete Any User
+ */
+router.delete("/user/:id", verifyJWT, verifyAdmin, async (req, res) => {
+  try {
+    const { usersCollection } = await getCollections();
+    const result = await usersCollection.deleteOne({
+      _id: new ObjectId(req.params.id),
+    });
+    res.json({ success: result.deletedCount > 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Admin — Delete Any Scholarship
+ */
+router.delete("/scholarship/:id", verifyJWT, verifyAdmin, async (req, res) => {
+  try {
+    const { scholarshipsCollection } = await getCollections();
+    const result = await scholarshipsCollection.deleteOne({
+      _id: new ObjectId(req.params.id),
+    });
+    res.json({ success: result.deletedCount > 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -1,90 +1,32 @@
-const express = require('express');
-const cors = require('cors');
+const express = require("express");
+const cors = require("cors");
+require("dotenv").config();
+
+const { connectDB } = require("./config/db");
+
 const app = express();
+const port = process.env.PORT || 5000;
 
-// todo Required files (API Routes)
-  // ? Students
-const userRoutes = require("./routes/users.routes");
-const scholarshipRoutes = require("./routes/scholarships.routes");
-const applicationRoutes = require("./routes/applications.routes");
-const reviewRoutes = require("./routes/reviews.routes");
-const bookmarkRoutes = require("./routes/bookmarks.routes");
-const paymentRoutes = require("./routes/payments.routes");
-
-
-  // ? Admins
-const adminRoutes = require("./routes/admin.routes");
-
-
-
-require('dotenv').config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
-
-const port = process.env.PORT || 3000
-
-// !!! Middleware
-app.use(express.json());
+// Middleware
 app.use(cors());
+app.use(express.json());
 
-// ** All routes
-app.use("/users", userRoutes);
-app.use("/scholarships", scholarshipRoutes);
-app.use("/applications", applicationRoutes);
-app.use("/reviews", reviewRoutes);
-app.use("/bookmarks", bookmarkRoutes);
-app.use("/payments", paymentRoutes);
+// Ensure DB connection
+connectDB();
 
-app.use("/admin", adminRoutes);
-
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}
-              @cluster0.9busnhf.mongodb.net/?appName=Cluster0`;
-
-// ** Create a MongoClient with a MongoClientOptions object to set the Stable API version
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  }
+// Routes
+app.get("/", (req, res) => {
+  res.send("ScholarStream API is running...");
 });
 
-async function run() {
-  try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
-    // Ensures that the client will close when you finish/error
-    // todo: await client.close();
-  }
-}
-run().catch(console.dir);
+app.use("/users", require("./routes/users.routes"));
+app.use("/scholarships", require("./routes/scholarships.routes"));
+app.use("/reviews", require("./routes/reviews.routes"));
+app.use("/applications", require("./routes/applications.routes"));
+app.use("/payments", require("./routes/payments.routes"));
+app.use("/bookmarks", require("./routes/bookmarks.routes"));
 
-app.get('/', (req, res) => {
-  res.send('API process running....')
-})
-
+// Start server
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
-
-// Add before express.json() or use body-parser raw for this route
-const bodyParser = require("body-parser");
-app.post("/webhook", bodyParser.raw({type: 'application/json'}), (req, res) => {
-  const sig = req.headers["stripe-signature"];
-  try {
-    const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-    if (event.type === "payment_intent.succeeded") {
-      const intent = event.data.object;
-      // update payment record and optionally create application record
-      paymentsCollection.updateOne({ paymentIntentId: intent.id }, { $set: { status: "succeeded", succeededAt: new Date() } });
-      // create application if you wish
-    }
-    res.json({ received: true });
-  } catch (err) {
-    res.status(400).send(`Webhook Error: ${err.message}`);
-  }
+  console.log(`🚀 Server running on port ${port}`);
 });
-

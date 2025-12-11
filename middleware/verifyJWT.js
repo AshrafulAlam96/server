@@ -1,20 +1,16 @@
 const jwt = require("jsonwebtoken");
-require("dotenv").config();
 
-const verifyJWT = (req, res, next) => {
-  const authorization = req.headers.authorization;
-  if (!authorization) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
+module.exports = function verifyJWT(req, res, next) {
+  const authHeader = req.headers.authorization;
 
-  const token = authorization.split(" ")[1];
+  if (!authHeader) return res.status(401).json({ message: "Unauthorized" });
+
+  const token = authHeader.split(" ")[1];
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) return res.status(403).json({ message: "Forbidden" });
 
-    req.decoded = decoded; // Save decoded email
+    req.decoded = decoded;
     next();
   });
 };
-
-module.exports = verifyJWT;

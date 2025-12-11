@@ -1,91 +1,67 @@
+// server/routes/adminStats.routes.js
 const express = require("express");
 const router = express.Router();
-const client = require("../db/client");
-const { verifyAdmin } = require("../middleware/verifyRole");
+const { getCollections } = require("../config/db");
 const verifyJWT = require("../middleware/verifyJWT");
+const { verifyAdmin } = require("../middleware/verifyRole");
 
-// Collections
-const users = client.db("scholarstream").collection("users");
-const scholarships = client.db("scholarstream").collection("scholarships");
-const applications = client.db("scholarstream").collection("applications");
-const payments = client.db("scholarstream").collection("payments");
-
-// ---- ADMIN STATS ----
+/**
+ * GET /admin/stats
+ * Admin-only analytics
+ */
 router.get("/", verifyJWT, verifyAdmin, async (req, res) => {
   try {
+    const {
+      usersCollection,
+      scholarshipsCollection,
+      applicationsCollection,
+      reviewsCollection,
+      paymentsCollection,
+    } = await getCollections();
 
-    const totalUsers = await users.countDocuments();
-    const totalScholarships = await scholarships.countDocuments();
-    const totalApplications = await applications.countDocuments();
+    const totalUsers = await usersCollection.countDocuments();
+    const totalScholarships = await scholarshipsCollection.countDocuments();
+    const totalApplications = await applicationsCollection.countDocuments();
+    const totalReviews = await reviewsCollection.countDocuments();
 
-    const pendingApps = await applications.countDocuments({ status: "pending" });
-    const approvedApps = await applications.countDocuments({ status: "approved" });
-    const rejectedApps = await applications.countDocuments({ status: "rejected" });
+    // roles
+    const roleCounts = {
+      admin: await usersCollection.countDocuments({ role: "admin" }),
+      moderator: await usersCollection.countDocuments({ role: "moderator" }),
+      student: await usersCollection.countDocuments({ role: "student" }),
+    };
 
-    // Revenue (only succeeded payments)
-    const revenueAgg = await payments.aggregate([
+    // application statuses
+    const applicationStatus = {
+      pending: await applicationsCollection.countDocuments({ status: "pending" }),
+      approved: await applicationsCollection.countDocuments({ status: "approved" }),
+      rejected: await applicationsCollection.countDocuments({ status: "rejected" }),
+    };
+
+    // categories
+    const categories = await scholarshipsCollection.aggregate([
+      { $group: { _id: "$category", count: { $sum: 1 } } }
+    ]).toArray();
+
+    // revenue
+    const revenueAgg = await paymentsCollection.aggregate([
       { $match: { status: "succeeded" } },
       { $group: { _id: null, total: { $sum: "$amount" } } }
     ]).toArray();
-
     const totalRevenue = revenueAgg[0]?.total || 0;
-
-    // Monthly revenue trend (last 12 months)
-    const monthlyRevenue = await payments.aggregate([
-      { $match: { status: "succeeded" } },
-      {
-        $group: {
-          _id: {
-            year: { $year: "$succeededAt" },
-            month: { $month: "$succeededAt" }
-          },
-          total: { $sum: "$amount" }
-        }
-      },
-      { $sort: { "_id.year": 1, "_id.month": 1 } }
-    ]).toArray();
-
-    // Monthly application trend
-    const monthlyApplications = await applications.aggregate([
-      {
-        $group: {
-          _id: {
-            year: { $year: "$appliedAt" },
-            month: { $month: "$appliedAt" }
-          },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { "_id.year": 1, "_id.month": 1 } }
-    ]).toArray();
-
-    // Top 5 scholarships with most applications
-    const topScholarships = await applications.aggregate([
-      {
-        $group: {
-          _id: "$scholarshipId",
-          total: { $sum: 1 }
-        }
-      },
-      { $sort: { total: -1 } },
-      { $limit: 5 }
-    ]).toArray();
 
     res.json({
       totalUsers,
       totalScholarships,
       totalApplications,
-      pendingApps,
-      approvedApps,
-      rejectedApps,
+      totalReviews,
+      roleCounts,
+      applicationStatus,
+      categories,
       totalRevenue,
-      monthlyRevenue,
-      monthlyApplications,
-      topScholarships
     });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

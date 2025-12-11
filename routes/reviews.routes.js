@@ -4,19 +4,30 @@ const client = require("../db/client");
 const { ObjectId } = require("mongodb");
 
 const verifyJWT = require("../middleware/verifyJWT");
-const { verifyModerator, verifyAdmin } = require("../middleware/verifyRole");
+const { verifyModerator } = require("../middleware/verifyRole");
 
-const reviewsCollection = client.db("scholarstream").collection("reviews");
+const reviews = client.db("scholarstream").collection("reviews");
 
-// =============================
-// POST — Add or Update Review (Student)
-// =============================
+// -------------------------------------------
+// GET reviews for a scholarship
+// -------------------------------------------
+router.get("/:scholarshipId", async (req, res) => {
+  const scholarshipId = req.params.scholarshipId;
+  const data = await reviews
+    .find({ scholarshipId })
+    .sort({ reviewedAt: -1 })
+    .toArray();
+  res.json(data);
+});
+
+// -------------------------------------------
+// POST Add or Update Review
+// -------------------------------------------
 router.post("/", verifyJWT, async (req, res) => {
   const { scholarshipId, rating, comment } = req.body;
   const email = req.decoded.email;
 
-  // Prevent multiple reviews for same scholarship
-  const existing = await reviewsCollection.findOne({ scholarshipId, email });
+  const existing = await reviews.findOne({ scholarshipId, email });
 
   const reviewData = {
     scholarshipId,
@@ -27,94 +38,56 @@ router.post("/", verifyJWT, async (req, res) => {
   };
 
   if (existing) {
-    // Update review
-    const result = await reviewsCollection.updateOne(
+    const result = await reviews.updateOne(
       { _id: existing._id },
       { $set: reviewData }
     );
-
-    return res.json({
-      updated: true,
-      message: "Review updated",
-      result,
-    });
+    return res.json({ updated: true, result });
   }
 
-  // Insert new review
-  const result = await reviewsCollection.insertOne(reviewData);
-
-  res.json({
-    inserted: true,
-    message: "Review added",
-    result,
-  });
+  const result = await reviews.insertOne(reviewData);
+  res.json({ inserted: true, result });
 });
 
-// =============================
-// GET — Reviews for a scholarship
-// =============================
-router.get("/:scholarshipId", async (req, res) => {
-  const scholarshipId = req.params.scholarshipId;
-
-  const reviews = await reviewsCollection
-    .find({ scholarshipId })
-    .sort({ reviewedAt: -1 })
-    .toArray();
-
-  res.json(reviews);
-});
-
-// =============================
-// DELETE — Student deletes own review
-// =============================
+// -------------------------------------------
+// DELETE Student's own review
+// -------------------------------------------
 router.delete("/:id", verifyJWT, async (req, res) => {
   const id = req.params.id;
   const email = req.decoded.email;
 
-  const result = await reviewsCollection.deleteOne({
+  const result = await reviews.deleteOne({
     _id: new ObjectId(id),
     email,
   });
 
-  res.json({
-    deleted: result.deletedCount > 0,
-  });
+  res.json({ deleted: result.deletedCount > 0 });
 });
 
-// =============================
-// DELETE — Moderator deletes any review
-// =============================
+// -------------------------------------------
+// DELETE Moderator Review (for moderation)
+// -------------------------------------------
 router.delete("/mod/remove/:id", verifyJWT, verifyModerator, async (req, res) => {
   const id = req.params.id;
 
-  const result = await reviewsCollection.deleteOne({
-    _id: new ObjectId(id),
-  });
+  const result = await reviews.deleteOne({ _id: new ObjectId(id) });
 
-  res.json({
-    success: true,
-    message: "Review removed by moderator",
-    result,
-  });
+  res.json({ success: true, result });
 });
 
-// =============================
-// GET — Average rating for a scholarship
-// =============================
-router.get("/average/:scholarshipId", async (req, res) => {
+// -------------------------------------------
+// GET Average Rating
+// -------------------------------------------
+router.get("/avg/:scholarshipId", async (req, res) => {
   const scholarshipId = req.params.scholarshipId;
 
-  const reviews = await reviewsCollection.find({ scholarshipId }).toArray();
-
-  if (reviews.length === 0) {
-    return res.json({ averageRating: 0 });
-  }
+  const all = await reviews.find({ scholarshipId }).toArray();
+  if (!all.length) return res.json({ avg: 0 });
 
   const avg =
-    reviews.reduce((acc, cur) => acc + Number(cur.rating), 0) /
-    reviews.length;
+    all.reduce((sum, r) => sum + Number(r.rating), 0) / all.length;
 
-  res.json({ averageRating: avg.toFixed(1) });
+  res.json({ avg: Number(avg.toFixed(1)) });
 });
 
 module.exports = router;

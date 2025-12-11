@@ -9,6 +9,8 @@ const scholarshipRoutes = require("./routes/scholarships.routes");
 const applicationRoutes = require("./routes/applications.routes");
 const reviewRoutes = require("./routes/reviews.routes");
 const bookmarkRoutes = require("./routes/bookmarks.routes");
+const paymentRoutes = require("./routes/payments.routes");
+
 
   // ? Admins
 const adminRoutes = require("./routes/admin.routes");
@@ -30,6 +32,7 @@ app.use("/scholarships", scholarshipRoutes);
 app.use("/applications", applicationRoutes);
 app.use("/reviews", reviewRoutes);
 app.use("/bookmarks", bookmarkRoutes);
+app.use("/payments", paymentRoutes);
 
 app.use("/admin", adminRoutes);
 
@@ -66,4 +69,22 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
 })
+
+// Add before express.json() or use body-parser raw for this route
+const bodyParser = require("body-parser");
+app.post("/webhook", bodyParser.raw({type: 'application/json'}), (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  try {
+    const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    if (event.type === "payment_intent.succeeded") {
+      const intent = event.data.object;
+      // update payment record and optionally create application record
+      paymentsCollection.updateOne({ paymentIntentId: intent.id }, { $set: { status: "succeeded", succeededAt: new Date() } });
+      // create application if you wish
+    }
+    res.json({ received: true });
+  } catch (err) {
+    res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+});
 

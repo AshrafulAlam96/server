@@ -8,8 +8,11 @@ const userRoutes = require("./routes/users.routes");
 const scholarshipRoutes = require("./routes/scholarships.routes");
 const applicationRoutes = require("./routes/applications.routes");
 const reviewRoutes = require("./routes/reviews.routes");
+const bookmarkRoutes = require("./routes/bookmarks.routes");
+
   // ? Admins
 const adminRoutes = require("./routes/admin.routes");
+
 
 
 require('dotenv').config();
@@ -26,6 +29,7 @@ app.use("/users", userRoutes);
 app.use("/scholarships", scholarshipRoutes);
 app.use("/applications", applicationRoutes);
 app.use("/reviews", reviewRoutes);
+app.use("/bookmarks", bookmarkRoutes);
 
 app.use("/admin", adminRoutes);
 

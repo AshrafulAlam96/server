@@ -6,6 +6,7 @@ const app = express();
 const userRoutes = require("./routes/users.routes");
 const scholarshipRoutes = require("./routes/scholarships.routes");
 const applicationRoutes = require("./routes/applications.routes");
+const reviewRoutes = require("./routes/reviews.routes");
 
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
@@ -20,8 +21,10 @@ app.use(cors());
 app.use("/users", userRoutes);
 app.use("/scholarships", scholarshipRoutes);
 app.use("/applications", applicationRoutes);
+app.use("/reviews", reviewRoutes);
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.9busnhf.mongodb.net/?appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}
+              @cluster0.9busnhf.mongodb.net/?appName=Cluster0`;
 
 // ** Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {

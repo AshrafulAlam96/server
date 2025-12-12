@@ -27,3 +27,5 @@ Thumbs.db
 # logs
 logs/
 *.log
+
+firebase-adminsdk.json

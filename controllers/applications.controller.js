@@ -1,0 +1,1 @@
+// server/controllers/applications.controller.js

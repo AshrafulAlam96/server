@@ -36,6 +36,8 @@ app.use("/reviews", require("./routes/reviews.routes"));     // ← FIXED
 app.use("/bookmarks", require("./routes/bookmarks.routes"));
 app.use("/payments", require("./routes/payments.routes"));
 
+app.use("/admin", require("./routes/admin.routes"));
+
 // Webhook route (AFTER raw middleware)
 app.use("/webhook", require("./routes/webhook.routes"));
 

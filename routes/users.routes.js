@@ -1,63 +1,55 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
-const router = express.Router();
-const { getCollections } = require("../config/db");
-const verifyJWT = require("../middleware/verifyJWT");
-const { verifyAdmin, verifyModerator } = require("../middleware/verifyRole");
 const { ObjectId } = require("mongodb");
+const { getCollections } = require("../config/db");
 
-// Create JWT
+const router = express.Router();
+
+// ========================
+// POST /users/jwt
+// ========================
 router.post("/jwt", async (req, res) => {
-  const token = jwt.sign(req.body, process.env.JWT_SECRET, {
+  const { email } = req.body;
+
+  const token = jwt.sign({ email }, process.env.JWT_SECRET, {
     expiresIn: "7d",
   });
+
   res.json({ token });
 });
 
-// Save user
+// ========================
+// POST /users (register sync)
+// ========================
 router.post("/", async (req, res) => {
+  const { name, email } = req.body;
   const { usersCollection } = await getCollections();
 
-  const user = req.body;
-  const exists = await usersCollection.findOne({ email: user.email });
+  const existing = await usersCollection.findOne({ email });
+  if (existing) {
+    return res.json({ inserted: false });
+  }
 
-  if (exists) return res.json({ inserted: false, message: "User exists" });
+  const user = {
+    name,
+    email,
+    role: "student",
+    createdAt: new Date(),
+  };
 
   const result = await usersCollection.insertOne(user);
   res.json({ inserted: true, result });
 });
 
-// Get all users
-router.get("/", verifyJWT, verifyAdmin, async (req, res) => {
-  const { usersCollection } = await getCollections();
-  res.json(await usersCollection.find().toArray());
-});
-
-// Get user role
+// ========================
+// GET role by email
+// ========================
 router.get("/role/:email", async (req, res) => {
+  const { email } = req.params;
   const { usersCollection } = await getCollections();
-  const user = await usersCollection.findOne({ email: req.params.email });
+
+  const user = await usersCollection.findOne({ email });
   res.json({ role: user?.role || "student" });
-});
-
-// Make admin
-router.patch("/admin/:id", verifyJWT, verifyAdmin, async (req, res) => {
-  const { usersCollection } = await getCollections();
-  const result = await usersCollection.updateOne(
-    { _id: new ObjectId(req.params.id) },
-    { $set: { role: "admin" } }
-  );
-  res.json(result);
-});
-
-// Make moderator
-router.patch("/moderator/:id", verifyJWT, verifyAdmin, async (req, res) => {
-  const { usersCollection } = await getCollections();
-  const result = await usersCollection.updateOne(
-    { _id: new ObjectId(req.params.id) },
-    { $set: { role: "moderator" } }
-  );
-  res.json(result);
 });
 
 module.exports = router;

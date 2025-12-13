@@ -1,39 +1,61 @@
 const express = require("express");
 const router = express.Router();
-const { connectDB } = require("../config/db");
+const { ObjectId } = require("mongodb");
+const { getCollections } = require("../config/db");
 const verifyJWT = require("../middleware/verifyJWT");
 const { verifyAdmin } = require("../middleware/verifyRole");
 
+/**
+ * GET /admin/stats
+ * Admin Analytics
+ */
 router.get("/stats", verifyJWT, verifyAdmin, async (req, res) => {
-  const db = await connectDB();
+  const {
+    usersCollection,
+    scholarshipsCollection,
+    applicationsCollection,
+    reviewsCollection,
+  } = await getCollections();
 
-  const users = db.collection("users");
-  const scholarships = db.collection("scholarships");
-  const applications = db.collection("applications");
-  const payments = db.collection("payments");
+  const users = await usersCollection.countDocuments();
+  const scholarships = await scholarshipsCollection.countDocuments();
+  const applications = await applicationsCollection.countDocuments();
+  const reviews = await reviewsCollection.countDocuments();
 
-  const totalUsers = await users.countDocuments();
-  const totalScholarships = await scholarships.countDocuments();
-  const totalApplications = await applications.countDocuments();
+  res.json({ users, scholarships, applications, reviews });
+});
 
-  const pending = await applications.countDocuments({ status: "pending" });
-  const approved = await applications.countDocuments({ status: "approved" });
-  const rejected = await applications.countDocuments({ status: "rejected" });
+/**
+ * GET /admin/users
+ */
+router.get("/users", async (req, res) => {
+  const { usersCollection } = await getCollections();
+  const users = await usersCollection.find().toArray();
+  res.json(users);
+});
 
-  const revenueAgg = await payments.aggregate([
-    { $match: { status: "succeeded" } },
-    { $group: { _id: null, total: { $sum: "$amount" } } }
-  ]).toArray();
+/**
+ * PATCH /admin/users/admin/:id
+ */
+router.patch("/users/admin/:id", verifyJWT, verifyAdmin, async (req, res) => {
+  const { usersCollection } = await getCollections();
+  const result = await usersCollection.updateOne(
+    { _id: new ObjectId(req.params.id) },
+    { $set: { role: "admin" } }
+  );
+  res.json(result);
+});
 
-  const totalRevenue = revenueAgg[0]?.total || 0;
-
-  res.json({
-    totalUsers,
-    totalScholarships,
-    totalApplications,
-    applications: { pending, approved, rejected },
-    totalRevenue
-  });
+/**
+ * PATCH /admin/users/moderator/:id
+ */
+router.patch("/users/moderator/:id", verifyJWT, verifyAdmin, async (req, res) => {
+  const { usersCollection } = await getCollections();
+  const result = await usersCollection.updateOne(
+    { _id: new ObjectId(req.params.id) },
+    { $set: { role: "moderator" } }
+  );
+  res.json(result);
 });
 
 module.exports = router;

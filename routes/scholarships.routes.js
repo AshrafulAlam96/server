@@ -5,43 +5,92 @@ const { getCollections } = require("../config/db");
 const verifyJWT = require("../middleware/verifyJWT");
 const { verifyAdmin, verifyModerator } = require("../middleware/verifyRole");
 
-// All scholarships
+/* =======================
+   GET ALL SCHOLARSHIPS
+======================= */
 router.get("/", async (req, res) => {
   const { scholarshipsCollection } = await getCollections();
-  res.json(await scholarshipsCollection.find().toArray());
+  const data = await scholarshipsCollection.find().toArray();
+  res.send(data);
 });
 
-// Get details
+/* =======================
+   GET SINGLE SCHOLARSHIP
+======================= */
 router.get("/:id", async (req, res) => {
   const { scholarshipsCollection } = await getCollections();
-  res.json(
-    await scholarshipsCollection.findOne({ _id: new ObjectId(req.params.id) })
-  );
+  const scholarship = await scholarshipsCollection.findOne({
+    _id: new ObjectId(req.params.id),
+  });
+
+  if (!scholarship) {
+    return res.status(404).send({ message: "Scholarship not found" });
+  }
+
+  res.send(scholarship);
 });
 
-// Add scholarship (Admin)
+/* =======================
+   ADD SCHOLARSHIP (ADMIN)
+======================= */
 router.post("/", verifyJWT, verifyAdmin, async (req, res) => {
   const { scholarshipsCollection } = await getCollections();
-  res.json(await scholarshipsCollection.insertOne(req.body));
+
+  const result = await scholarshipsCollection.insertOne({
+    ...req.body,
+    createdAt: new Date(),
+  });
+
+  res.send({
+    success: true,
+    insertedId: result.insertedId,
+  });
 });
 
-// Update scholarship
-router.patch("/:id", verifyJWT, verifyAdmin, async (req, res) => {
+/* =======================
+   UPDATE SCHOLARSHIP (ADMIN)
+======================= */
+router.put("/:id", verifyJWT, verifyAdmin, async (req, res) => {
   const { scholarshipsCollection } = await getCollections();
-  res.json(
-    await scholarshipsCollection.updateOne(
-      { _id: new ObjectId(req.params.id) },
-      { $set: req.body }
-    )
+
+  const result = await scholarshipsCollection.updateOne(
+    { _id: new ObjectId(req.params.id) },
+    { $set: req.body }
   );
+
+  if (result.modifiedCount === 0) {
+    return res.status(404).send({ message: "No changes made" });
+  }
+
+  res.send({
+    success: true,
+    modifiedCount: result.modifiedCount,
+  });
 });
 
-// Delete scholarship
+/* =======================
+   DELETE SCHOLARSHIP (ADMIN)
+======================= */
 router.delete("/:id", verifyJWT, verifyAdmin, async (req, res) => {
-  const { scholarshipsCollection } = await getCollections();
-  res.json(
-    await scholarshipsCollection.deleteOne({ _id: new ObjectId(req.params.id) })
-  );
+  try {
+    const { scholarshipsCollection } = await getCollections();
+
+    const result = await scholarshipsCollection.deleteOne({
+      _id: new ObjectId(req.params.id),
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).send({ message: "Scholarship not found" });
+    }
+
+    res.send({
+      success: true,
+      message: "Scholarship deleted successfully",
+      deletedCount: result.deletedCount,
+    });
+  } catch (err) {
+    res.status(500).send({ error: err.message });
+  }
 });
 
 module.exports = router;

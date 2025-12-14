@@ -3,6 +3,13 @@ const router = express.Router();
 const { getCollections } = require("../config/db");
 const { ObjectId } = require("mongodb");
 
+router.get("/role/:email", async (req, res) => {
+  const { usersCollection } = await getCollections();
+  const user = await usersCollection.findOne({ email: req.params.email });
+  res.send({ role: user?.role || "student" });
+});
+
+
 /* GET all users */
 router.get("/", async (req, res) => {
   const { usersCollection } = await getCollections();

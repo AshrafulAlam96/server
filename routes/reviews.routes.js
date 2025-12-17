@@ -36,11 +36,15 @@ router.post("/", verifyJWT, async (req, res) => {
 // ===============================
 // GET pending reviews (MODERATOR)
 // ===============================
-router.get("/moderation/pending", verifyJWT, verifyModerator, async (req, res) => {
-  const db = await connectDB();
-  const reviews = await db.collection("reviews").find({ status: "pending" }).toArray();
-  res.json(reviews);
-});
+router.get(
+  "/moderation/pending",verifyJWT,verifyModerator,async (req, res) => {
+    const db = await connectDB();
+    const reviews = await db.collection("reviews")
+      .find({ status: "pending" })
+      .toArray();
+    res.json(reviews);
+  }
+);
 
 // ===============================
 // PATCH approve / reject (MOD)
@@ -66,5 +70,7 @@ router.delete("/:id", verifyJWT, verifyAdmin, async (req, res) => {
 
   res.json({ message: "Review deleted" });
 });
+
+
 
 module.exports = router;

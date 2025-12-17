@@ -32,11 +32,14 @@ connectDB();
 app.use("/users", require("./routes/users.routes"));
 app.use("/scholarships", require("./routes/scholarships.routes"));
 app.use("/applications", require("./routes/applications.routes"));
-app.use("/reviews", require("./routes/reviews.routes"));     // ← FIXED
 app.use("/bookmarks", require("./routes/bookmarks.routes"));
 app.use("/payments", require("./routes/payments.routes"));
 
 app.use("/admin", require("./routes/admin.routes"));
+app.use("/reviews", require("./routes/reviews.routes"));     // ← FIXED
+
+app.use("/moderator", require("./routes/moderator.routes"));
+
 
 // Webhook route (AFTER raw middleware)
 app.use("/webhook", require("./routes/webhook.routes"));

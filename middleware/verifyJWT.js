@@ -1,4 +1,5 @@
 // server/middleware/verifyJWT.js
+
 const jwt = require("jsonwebtoken");
 
 module.exports = function verifyJWT(req, res, next) {
@@ -9,9 +10,11 @@ module.exports = function verifyJWT(req, res, next) {
   const token = authHeader.split(" ")[1];
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(403).json({ message: "Forbidden" });
+  if (err) return res.status(403).json({ message: "Forbidden" });
 
-    req.decoded = decoded;
-    next();
-  });
+  req.user = decoded;   // ✅ FIX
+  req.decoded = decoded;
+  next();
+});
+
 };

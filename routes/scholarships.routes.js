@@ -93,4 +93,28 @@ router.delete("/:id", verifyJWT, verifyAdmin, async (req, res) => {
   }
 });
 
+// GET pending scholarships (Moderator)
+router.get("/pending/mod", verifyJWT, verifyModerator, async (req, res) => {
+  const { scholarshipsCollection } = await getCollections();
+  const result = await scholarshipsCollection
+    .find({ status: "pending" })
+    .toArray();
+  res.send(result);
+});
+
+// Approve / Reject scholarship
+router.patch("/status/:id", verifyJWT, verifyModerator, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const { scholarshipsCollection } = await getCollections();
+
+  const result = await scholarshipsCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { status } }
+  );
+
+  res.send(result);
+});
+
+
 module.exports = router;

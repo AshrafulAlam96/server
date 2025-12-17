@@ -171,4 +171,28 @@ router.patch("/reject/:id", verifyJWT, verifyModerator, async (req, res) => {
   }
 });
 
+
+// GET pending applications (Moderator)
+router.get("/pending/mod", verifyJWT, verifyModerator, async (req, res) => {
+  const { applicationsCollection } = await getCollections();
+  const result = await applicationsCollection
+    .find({ status: "pending" })
+    .toArray();
+  res.send(result);
+});
+
+// Approve / Reject application
+router.patch("/status/:id", verifyJWT, verifyModerator, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const { applicationsCollection } = await getCollections();
+
+  const result = await applicationsCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { status } }
+  );
+
+  res.send(result);
+});
+
 module.exports = router;

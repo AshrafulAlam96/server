@@ -1,4 +1,5 @@
-// server/middleware/verifyJWT.js
+// server/middleware/verifyRole.js
+
 function verifyAdmin(req, res, next) {
   if (req.decoded.role !== "admin") {
     return res.status(403).json({ message: "Admin access denied" });

@@ -1,3 +1,5 @@
+// server/routes/bookmarks.routes.js
+
 const express = require("express");
 const router = express.Router();
 const { ObjectId } = require("mongodb");

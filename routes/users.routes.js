@@ -1,53 +1,44 @@
 const express = require("express");
 const router = express.Router();
 const { getCollections } = require("../config/db");
-const { ObjectId } = require("mongodb");
 
+/* ============================
+   CREATE / SYNC USER
+============================ */
+router.post("/", async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    if (!email) return res.status(400).send({ message: "Email required" });
+
+    const { usersCollection } = await getCollections();
+
+    // check existing user
+    const existing = await usersCollection.findOne({ email });
+    if (existing) {
+      return res.send(existing);
+    }
+
+    const user = {
+      name: name || "Anonymous",
+      email,
+      role: "student",
+      createdAt: new Date()
+    };
+
+    const result = await usersCollection.insertOne(user);
+    res.send({ ...user, _id: result.insertedId });
+  } catch (err) {
+    res.status(500).send({ message: err.message });
+  }
+});
+
+/* ============================
+   GET USER ROLE
+============================ */
 router.get("/role/:email", async (req, res) => {
   const { usersCollection } = await getCollections();
   const user = await usersCollection.findOne({ email: req.params.email });
   res.send({ role: user?.role || "student" });
-});
-
-
-/* GET all users */
-router.get("/", async (req, res) => {
-  const { usersCollection } = await getCollections();
-  const users = await usersCollection.find().toArray();
-  res.send(users);
-});
-
-/* GET single user */
-router.get("/:id", async (req, res) => {
-  const { usersCollection } = await getCollections();
-  const user = await usersCollection.findOne({
-    _id: new ObjectId(req.params.id),
-  });
-  res.send(user);
-});
-
-/* UPDATE role */
-router.patch("/role/:id", async (req, res) => {
-  const { role } = req.body;
-  const { usersCollection } = await getCollections();
-
-  const result = await usersCollection.updateOne(
-    { _id: new ObjectId(req.params.id) },
-    { $set: { role } }
-  );
-
-  res.send(result);
-});
-
-/* DELETE user */
-router.delete("/:id", async (req, res) => {
-  const { usersCollection } = await getCollections();
-
-  const result = await usersCollection.deleteOne({
-    _id: new ObjectId(req.params.id),
-  });
-
-  res.send(result);
 });
 
 module.exports = router;
